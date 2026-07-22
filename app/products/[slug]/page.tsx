@@ -1,142 +1,97 @@
-import Image from "next/image";
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { Card } from "@/components/ui";
-import { CheckoutForm } from "./CheckoutForm";
+import { notFound } from 'next/navigation';
+import Link from 'next/link';
+import CheckoutForm from './CheckoutForm';
 
 async function getProduct(slug: string) {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_WP_URL}/wp-json/headless/v1/products/${slug}`,
-    { cache: "no-store" },
-  );
+  const timestamp = Date.now();
+  const res = await fetch(`${process.env.NEXT_PUBLIC_WP_URL}/wp-json/headless/v1/products/${slug}?t=${timestamp}`, {
+    cache: 'no-store'
+  });
   if (!res.ok) return null;
   const data = await res.json();
   return data.data;
 }
 
 async function getProductFields(slug: string) {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_WP_URL}/wp-json/headless/v1/products/${slug}/fields`,
-    { cache: "no-store" },
-  );
+  const timestamp = Date.now();
+  const res = await fetch(`${process.env.NEXT_PUBLIC_WP_URL}/wp-json/headless/v1/products/${slug}/fields?t=${timestamp}`, {
+    cache: 'no-store'
+  });
   if (!res.ok) return [];
   const data = await res.json();
-  return data.data.fields || [];
+  return data.data?.fields || [];
 }
 
-export default async function ProductPage(props: {
-  params: Promise<{ slug: string }>;
-}) {
-  const params = await props.params;
-  const [product, fields] = await Promise.all([
-    getProduct(params.slug),
-    getProductFields(params.slug),
-  ]);
-  if (!product) notFound();
+export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = await params;
+  const product = await getProduct(resolvedParams.slug);
+  const fields = await getProductFields(resolvedParams.slug);
+
+  if (!product) return notFound();
 
   return (
-    <main className="min-h-screen pb-20">
-      {/* Header */}
-      <div className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Link
-            href="/"
-            className="text-sm font-medium text-zinc-400 hover:text-white transition-colors flex items-center gap-2"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="m15 18-6-6 6-6" />
-            </svg>
-            Back to Games
-          </Link>
+    <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        
+        {/* Breadcrumbs */}
+        <div className="mb-8 flex items-center gap-2 font-pixel text-[10px] text-[#00f0ff]">
+          <Link href="/" className="hover:text-[#fcee0a] transition-colors">HOME</Link>
+          <span className="text-[#ff00de]">&gt;</span>
+          <Link href="/#all-games" className="hover:text-[#fcee0a] transition-colors">GAMES</Link>
+          <span className="text-[#ff00de]">&gt;</span>
+          <span className="text-[#fcee0a] truncate">{product.name.toUpperCase()}</span>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-          {/* Left: Product Info */}
-          <div className="lg:col-span-7 space-y-8">
-            <Card className="overflow-hidden !bg-zinc-900">
-              {product.image_url ? (
-                <div className="relative h-72 sm:h-96 w-full">
-                  <Image
-                    src={product.image_url}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent" />
-                </div>
-              ) : (
-                <div className="h-72 sm:h-96 w-full bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
-                  <span className="text-8xl font-bold text-zinc-700">
-                    {product.name.charAt(0)}
-                  </span>
-                </div>
-              )}
-            </Card>
-
-            <div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-                {product.name}
-              </h1>
-              <div className="flex items-baseline gap-3 mb-6">
-                <span className="text-2xl font-semibold text-indigo-400">
-                  ${product.min_price}
-                </span>
-                {product.min_price !== product.max_price && (
-                  <span className="text-lg text-zinc-500">
-                    — ${product.max_price}
-                  </span>
-                )}
-              </div>
-              {product.short_description && (
-                <div
-                  className="text-zinc-400 leading-relaxed text-base"
-                  dangerouslySetInnerHTML={{
-                    __html: product.short_description,
-                  }}
+          
+          {/* LEFT COLUMN: Image & Main Description */}
+          <div className="lg:col-span-5 space-y-8">
+            
+            {/* 1. Product Banner Image */}
+            <div className="border-4 border-[#00f0ff] bg-[#1a0b2e] shadow-hard-cyan relative overflow-hidden">
+              <div className="relative h-72 sm:h-96 w-full">
+                <img 
+                  src={product.image_url || 'https://placehold.co/800x400/1a0b2e/00f0ff?text=NO+IMAGE'} 
+                  alt={product.name} 
+                  className="h-full w-full object-cover"
                 />
-              )}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#1a0b2e] via-transparent to-transparent" />
+              </div>
             </div>
 
-            {/* Variations Grid */}
+            {/* 2. Title & Price */}
             <div>
-              <h2 className="text-lg font-semibold text-white mb-4">
-                Select Amount
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {product.variations.map((v: any) => {
-                  const name = Object.values(v.attributes).join(" - ");
-                  return (
-                    <div
-                      key={v.id}
-                      className={`p-4 rounded-xl border text-center transition-all ${v.is_in_stock ? "border-zinc-800 bg-zinc-900/50 hover:border-zinc-700" : "border-zinc-800/50 bg-zinc-900/20 opacity-50"}`}
-                    >
-                      <p className="text-sm font-medium text-zinc-200 mb-1">
-                        {name}
-                      </p>
-                      <p className="text-lg font-bold text-white">${v.price}</p>
-                    </div>
-                  );
-                })}
+              <h1 className="font-pixel text-2xl md:text-3xl text-[#fcee0a] text-glow-yellow mb-4 leading-tight">
+                {product.name.toUpperCase()}
+              </h1>
+
+            </div>
+
+            {/* 3. MAIN PRODUCT DESCRIPTION (Supports HTML, Images, Videos) */}
+            <div className="border-4 border-[#ff00de] bg-[#1a0b2e] p-6 shadow-hard-pink relative">
+              <div className="absolute inset-0 crt-overlay opacity-10 pointer-events-none" />
+              <div className="relative z-10">
+                <h3 className="font-pixel text-xs text-[#ff00de] mb-4 uppercase tracking-wider border-b-2 border-[#ff00de]/30 pb-2 inline-block">
+                  Product Details & Instructions
+                </h3>
+                {/* 🌟 Renders the main description. If empty, falls back to short description */}
+                <div className="font-sans text-base text-white leading-relaxed space-y-4 description-content">
+                  {product.description || product.short_description ? (
+                    <div dangerouslySetInnerHTML={{ __html: product.description || product.short_description }} />
+                  ) : (
+                    <p className="text-gray-400">
+                      Instant top-up for {product.name}. Fill in your account details on the right, select your package, and complete the payment to receive your items immediately.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Right: Checkout Form */}
-          <div className="lg:col-span-5">
+          {/* RIGHT COLUMN: 3-Part Checkout Form */}
+          <div className="lg:col-span-7">
             <div className="lg:sticky lg:top-24">
-              <CheckoutForm
+              <CheckoutForm 
                 productId={product.id}
                 productName={product.name}
                 variations={product.variations}
@@ -144,8 +99,9 @@ export default async function ProductPage(props: {
               />
             </div>
           </div>
+
         </div>
       </div>
-    </main>
+    </div>
   );
 }

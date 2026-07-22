@@ -1,14 +1,108 @@
+/* Import Retro Fonts */
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@400;600;700&display=swap");
+
 @import "tailwindcss";
 
-@layer base {
-  body {
-    @apply bg-zinc-950 text-zinc-100 antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
+:root {
+  --neon-pink: #ff00de;
+  --neon-cyan: #00f0ff;
+  --neon-yellow: #fcee0a;
+  --dark-bg: #0a0118;
 }
 
-/* Premium Scrollbar */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: #09090b; }
-::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--dark-bg);
+  color: #ffffff;
+  font-family: "Rajdhani", sans-serif;
+  overflow-x: hidden;
+}
+
+/* Retro Grid Background */
+.retro-grid {
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 0, 222, 0.1) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center center;
+}
+
+/* CRT Scanline Overlay */
+.crt-overlay {
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+  background-size: 100% 4px;
+  pointer-events: none;
+}
+
+/* Typography */
+.font-pixel {
+  font-family: "Press Start 2P", cursive;
+}
+
+/* Blocky Scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0118;
+  border-left: 2px solid var(--neon-pink);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--neon-cyan);
+  border: 2px solid #0a0118;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--neon-yellow);
+}
+
+/* Neon Text Glows */
+.text-glow-pink {
+  text-shadow:
+    0 0 5px var(--neon-pink),
+    0 0 10px var(--neon-pink);
+}
+.text-glow-cyan {
+  text-shadow:
+    0 0 5px var(--neon-cyan),
+    0 0 10px var(--neon-cyan);
+}
+.text-glow-yellow {
+  text-shadow:
+    0 0 5px var(--neon-yellow),
+    0 0 10px var(--neon-yellow);
+}
+
+/* Hard Drop Shadows for Arcade Buttons */
+.shadow-hard-pink {
+  box-shadow: 6px 6px 0px 0px var(--neon-pink);
+}
+.shadow-hard-cyan {
+  box-shadow: 6px 6px 0px 0px var(--neon-cyan);
+}
+.shadow-hard-yellow {
+  box-shadow: 6px 6px 0px 0px var(--neon-yellow);
+}
+
+/* Button Press Effect */
+.btn-press:active {
+  transform: translate(4px, 4px);
+  box-shadow: 2px 2px 0px 0px currentColor;
+}
+
+/* Swiper Retro Overrides */
+.swiper-pagination-bullet {
+  background: var(--neon-pink) !important;
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 0 !important;
+  opacity: 0.5;
+  border: 2px solid #0a0118;
+}
+.swiper-pagination-bullet-active {
+  background: var(--neon-yellow) !important;
+  opacity: 1;
+  box-shadow: 0 0 10px var(--neon-yellow);
+}

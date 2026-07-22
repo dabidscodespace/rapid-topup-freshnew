@@ -1,24 +1,10 @@
 "use client";
-import { useState } from "react";
-import { Button, Card, Input, Select } from "@/components/ui";
 
-interface Variation {
-  id: number;
-  price: string;
-  attributes: Record<string, string>;
-  is_in_stock: boolean;
-}
-interface Field {
-  id: string;
-  label: string;
-  type: string;
-  placeholder?: string;
-  required?: boolean;
-  helper_text?: string;
-  options?: { value: string; label: string }[];
-}
+import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/AuthContext";
+import { Wallet, Check } from "lucide-react";
 
-export function CheckoutForm({
+export default function CheckoutForm({
   productId,
   productName,
   variations,
@@ -26,77 +12,142 @@ export function CheckoutForm({
 }: {
   productId: number;
   productName: string;
-  variations: Variation[];
-  fields: Field[];
+  variations: any[];
+  fields: any[];
 }) {
-  const [selectedVariation, setSelectedVariation] = useState<Variation | null>(
-    null,
-  );
+  const { user, refreshUser } = useAuth();
+  const [selectedVariation, setSelectedVariation] = useState<any>(null);
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
-  const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [paymentMethod, setPaymentMethod] = useState("bkash");
+  const [useWallet, setUseWallet] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
     message: string;
   } | null>(null);
+
+  const userBalance = Number(user?.balance) || 0;
+  const currentPrice = selectedVariation ? Number(selectedVariation.price) : 0;
+
+  const walletDeduction = useWallet ? Math.min(userBalance, currentPrice) : 0;
+  const remainingToPay = currentPrice - walletDeduction;
+
+  const handleFieldChange = (id: string, value: string) => {
+    setFieldValues((prev) => ({ ...prev, [id]: value }));
+  };
+
+  useEffect(() => {
+    if (user?.token) {
+      refreshUser();
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedVariation)
-      return setResult({ success: false, message: "Please select an amount." });
 
-    const missing = fields.filter((f) => f.required && !fieldValues[f.id]);
-    if (missing.length > 0)
+    for (const field of fields) {
+      if (field.required && !fieldValues[field.id]) {
+        return setResult({
+          success: false,
+          message: `${field.label} is required.`,
+        });
+      }
+    }
+
+    if (!selectedVariation)
+      return setResult({ success: false, message: "Please select a package." });
+    if (
+      remainingToPay > 0 &&
+      !["bkash", "nagad", "rocket", "upay"].includes(paymentMethod)
+    ) {
       return setResult({
         success: false,
-        message: `Please fill in: ${missing.map((f) => f.label).join(", ")}`,
+        message: "Please select a valid payment gateway.",
       });
+    }
 
     setLoading(true);
     setResult(null);
 
-    const cleanCustomFields = fields
-      .map((field) => ({
-        label: field.label,
-        value: fieldValues[field.id] || "",
-      }))
-      .filter((item) => item.value !== "");
+    const customFieldsPayload = fields
+      .map((field: any) => {
+        const val = fieldValues[field.id] || "";
+        return {
+          label: field.name || field.label || "Custom Field",
+          value: val,
+        };
+      })
+      .filter((f: any) => f.value !== "");
 
-    const mainGameId =
-      cleanCustomFields.length > 0 ? cleanCustomFields[0].value : "";
+    let mainIdValue = "GUEST";
+    for (const field of fields) {
+      const val = fieldValues[field.id];
+      const labelLower = (field.label || "").toLowerCase();
+      const nameLower = (field.name || "").toLowerCase();
+      if (
+        val &&
+        (labelLower.includes("uid") ||
+          labelLower.includes("player") ||
+          labelLower.includes("id") ||
+          nameLower.includes("uid") ||
+          nameLower.includes("player"))
+      ) {
+        mainIdValue = val;
+        break;
+      }
+    }
+    if (mainIdValue === "GUEST") {
+      const firstVal = Object.values(fieldValues).find(
+        (v: any) => v && v.trim() !== "",
+      );
+      if (firstVal) mainIdValue = firstVal;
+    }
+
+    const userId = user ? user.user_id : 0;
+    const userEmail = user
+      ? user.email
+      : fieldValues.email || "guest@example.com";
+
+    const payload = {
+      variation_id: selectedVariation.id,
+      game_uid: mainIdValue,
+      player_id: mainIdValue,
+      payment_method: remainingToPay > 0 ? paymentMethod : "wallet",
+      guest_email: userEmail,
+      user_id: userId,
+      use_wallet: useWallet,
+      custom_fields: customFieldsPayload,
+    };
 
     try {
-      // 🌟 NOTICE: headless/v1 instead of rapid-topup/v1
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_WP_URL}/wp-json/headless/v1/orders`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            variation_id: selectedVariation.id,
-            game_uid: mainGameId,
-            server_id: fieldValues.server_id || "",
-            zone_id: fieldValues.zone_id || "",
-            player_nickname:
-              fieldValues.player_nickname || fieldValues.nickname || "Guest",
-            payment_method: paymentMethod,
-            guest_email: fieldValues.email || "guest@example.com",
-            user_id: 0,
-            custom_fields: cleanCustomFields,
-          }),
+          body: JSON.stringify(payload),
         },
       );
-
       const data = await res.json();
+
+      // 🔥 CRITICAL DEBUG: Check exactly what the backend is returning
+      console.log("🔥 BACKEND ORDER RESPONSE:", data);
+
+      console.log("🔥 BACKEND ORDER RESPONSE:", data);
+      if (data.success && data.data.debug_info) {
+        console.log("🔥 SERVER DEBUG INFO:", data.data.debug_info);
+      }
 
       if (data.success) {
         const orderId = data.data.order_id;
+        const gatewayAmount = Number(data.data.gateway_amount);
+        console.log("🔥 PARSED GATEWAY AMOUNT:", gatewayAmount);
 
-        if (
-          ["bkash", "nagad", "rocket", "upay"].includes(
-            paymentMethod.toLowerCase(),
-          )
-        ) {
-          // 🌟 NOTICE: headless/v1 instead of rapid-topup/v1
+        if (gatewayAmount <= 0 || isNaN(gatewayAmount)) {
+          await refreshUser();
+          window.location.href = `/order-success?order=${orderId}`;
+          return;
+        } else {
           const payRes = await fetch(
             `${process.env.NEXT_PUBLIC_WP_URL}/wp-json/headless/v1/uddoktapay/initiate`,
             {
@@ -104,11 +155,10 @@ export function CheckoutForm({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 order_id: orderId,
-                payment_method: paymentMethod.toLowerCase(),
+                payment_method: paymentMethod,
               }),
             },
           );
-
           const payData = await payRes.json();
 
           if (payData.success && payData.data?.payment_url) {
@@ -117,25 +167,15 @@ export function CheckoutForm({
           } else {
             setResult({
               success: false,
-              message: payData.message || "Failed to initiate payment.",
+              message: payData.message || "Payment gateway error.",
             });
           }
-        } else {
-          setResult({
-            success: true,
-            message: `Order #${orderId} created successfully!`,
-          });
-          setFieldValues({});
-          setSelectedVariation(null);
         }
       } else {
-        setResult({
-          success: false,
-          message: data.message || "Failed to create order.",
-        });
+        setResult({ success: false, message: data.message || "Order failed." });
       }
     } catch (error) {
-      console.error("Order submission error:", error);
+      console.error("Network error:", error);
       setResult({
         success: false,
         message: "Network error. Please try again.",
@@ -146,154 +186,207 @@ export function CheckoutForm({
   };
 
   return (
-    <Card className="p-6 sm:p-8 !bg-zinc-900 border-zinc-800">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-white mb-1">Checkout</h2>
-        <p className="text-sm text-zinc-400">Complete your purchase securely</p>
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* PANEL 1: Account Details */}
+      {fields.length > 0 && (
+        <div
+          className="border-4 bg-[#1a0b2e] p-5 relative"
+          style={{
+            borderColor: "#00f0ff",
+            boxShadow: "6px 6px 0px 0px #00f0ff",
+          }}
+        >
+          <div className="absolute inset-0 crt-overlay opacity-10 pointer-events-none" />
+          <div className="relative z-10">
+            <h3 className="font-pixel text-xs text-[#fcee0a] mb-4 uppercase tracking-wider flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-6 h-6 border-2 border-[#fcee0a] text-[#fcee0a] text-[10px]">
+                1
+              </span>
+              Enter Account Details
+            </h3>
+            <div className="space-y-4">
+              {fields.map((field: any) => (
+                <div key={field.id}>
+                  <label className="block font-pixel text-[10px] text-gray-400 mb-1 uppercase">
+                    {field.label}{" "}
+                    {field.required && (
+                      <span className="text-[#ff00de]">*</span>
+                    )}
+                  </label>
+                  <input
+                    type={field.type === "number" ? "number" : "text"}
+                    value={fieldValues[field.id] || ""}
+                    onChange={(e) =>
+                      handleFieldChange(field.id, e.target.value)
+                    }
+                    placeholder={`Enter your ${field.label.toLowerCase()}`}
+                    className="w-full border-4 border-[#00f0ff] bg-[#0a0118] p-3 font-sans text-sm text-white placeholder-gray-600 focus:border-[#fcee0a] focus:outline-none transition-colors"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* 1. Variations */}
-        <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-3">
-            1. Select Amount <span className="text-rose-500">*</span>
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            {variations.map((v) => {
-              const name = Object.values(v.attributes).join(" - ");
+      {/* PANEL 2: Select Package */}
+      <div
+        className="border-4 bg-[#1a0b2e] p-5 relative"
+        style={{ borderColor: "#ff00de", boxShadow: "6px 6px 0px 0px #ff00de" }}
+      >
+        <div className="absolute inset-0 crt-overlay opacity-10 pointer-events-none" />
+        <div className="relative z-10">
+          <h3 className="font-pixel text-xs text-[#fcee0a] mb-4 uppercase tracking-wider flex items-center gap-2">
+            <span className="inline-flex items-center justify-center w-6 h-6 border-2 border-[#fcee0a] text-[#fcee0a] text-[10px]">
+              2
+            </span>
+            Choose a Package
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {variations.map((v: any) => {
               const isSelected = selectedVariation?.id === v.id;
+              const name = Object.values(v.attributes).join(" - ");
               return (
                 <button
                   key={v.id}
                   type="button"
                   disabled={!v.is_in_stock}
                   onClick={() => setSelectedVariation(v)}
-                  className={`relative p-4 rounded-xl border text-left transition-all duration-200 ${
+                  className={`p-4 border-4 text-center transition-all btn-press font-sans relative ${
                     !v.is_in_stock
-                      ? "opacity-40 cursor-not-allowed border-zinc-800 bg-zinc-900/50"
-                      : isSelected
-                        ? "border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500"
-                        : "border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 hover:bg-zinc-800/50"
+                      ? "border-gray-700 bg-gray-900 text-gray-500 opacity-50 cursor-not-allowed"
+                      : ""
+                  } ${
+                    isSelected
+                      ? "border-[#fcee0a] bg-[#0a0118] text-[#fcee0a] shadow-[4px_4px_0px_0px_#fcee0a]"
+                      : "border-[#00f0ff] bg-[#0a0118] text-white hover:border-[#fcee0a] hover:text-[#fcee0a]"
                   }`}
                 >
-                  <p className="text-sm font-medium text-zinc-200 mb-1">
+                  <div className="font-bold text-sm mb-1 uppercase leading-tight">
                     {name}
-                  </p>
-                  <p className="text-lg font-bold text-white">${v.price}</p>
-                  {isSelected && (
-                    <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                  )}
+                  </div>
+                  <div className="font-pixel text-xs">৳{v.price}</div>
                 </button>
               );
             })}
           </div>
         </div>
+      </div>
 
-        {/* 2. Dynamic Fields */}
-        {fields.length > 0 && (
-          <div className="space-y-4 pt-6 border-t border-zinc-800">
-            <label className="block text-sm font-medium text-zinc-300">
-              2. Your Details
-            </label>
-            {fields.map((field) => (
-              <div key={field.id}>
-                {field.type === "select" && field.options ? (
-                  <Select
-                    label={field.label}
-                    value={fieldValues[field.id] || ""}
-                    onChange={(e) =>
-                      setFieldValues((prev) => ({
-                        ...prev,
-                        [field.id]: e.target.value,
-                      }))
-                    }
-                    options={field.options}
-                    required={field.required}
+      {/* PANEL 3: Payment & Checkout */}
+      <div
+        className="border-4 bg-[#1a0b2e] p-5 relative"
+        style={{ borderColor: "#fcee0a", boxShadow: "6px 6px 0px 0px #fcee0a" }}
+      >
+        <div className="absolute inset-0 crt-overlay opacity-10 pointer-events-none" />
+        <div className="relative z-10">
+          <h3 className="font-pixel text-xs text-[#fcee0a] mb-4 uppercase tracking-wider flex items-center gap-2">
+            <span className="inline-flex items-center justify-center w-6 h-6 border-2 border-[#fcee0a] text-[#fcee0a] text-[10px]">
+              3
+            </span>
+            Payment Method
+          </h3>
+
+          <div className="space-y-5">
+            {user && userBalance > 0 && selectedVariation && (
+              <div className="border-2 border-[#00f0ff] bg-[#0a0118] p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-[#00f0ff]/10 rounded-none">
+                    <Wallet className="h-5 w-5 text-[#00f0ff]" />
+                  </div>
+                  <div>
+                    <p className="font-sans text-sm font-bold text-white">
+                      Use Wallet Balance
+                    </p>
+                    <p className="font-pixel text-[10px] text-[#fcee0a]">
+                      Available: ৳{userBalance.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setUseWallet(!useWallet)}
+                  className={`relative w-14 h-7 border-2 transition-all btn-press ${
+                    useWallet
+                      ? "border-[#fcee0a] bg-[#fcee0a]/20"
+                      : "border-gray-600 bg-[#0a0118]"
+                  }`}
+                >
+                  <div
+                    className={`absolute top-0.5 w-5 h-5 bg-[#fcee0a] transition-all ${
+                      useWallet ? "left-[34px]" : "left-0.5"
+                    }`}
                   />
-                ) : (
-                  <Input
-                    label={field.label}
-                    type={field.type}
-                    value={fieldValues[field.id] || ""}
-                    onChange={(e) =>
-                      setFieldValues((prev) => ({
-                        ...prev,
-                        [field.id]: e.target.value,
-                      }))
-                    }
-                    placeholder={field.placeholder}
-                    helperText={field.helper_text}
-                    required={field.required}
-                  />
-                )}
+                  {useWallet && (
+                    <Check className="absolute left-1 top-1 h-4 w-4 text-black" />
+                  )}
+                </button>
               </div>
-            ))}
-          </div>
-        )}
+            )}
 
-        {/* 3. Payment */}
-        <div className="pt-6 border-t border-zinc-800">
-          <Select
-            label="3. Payment Method"
-            value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
-            options={[
-              { value: "cod", label: "Cash on Delivery" },
-              { value: "bkash", label: "bKash" },
-              { value: "nagad", label: "Nagad" },
-              { value: "rocket", label: "Rocket" },
-            ]}
-          />
+            {useWallet && walletDeduction > 0 && (
+              <div className="bg-[#0a0118] p-3 border-2 border-dashed border-[#fcee0a] space-y-1">
+                <div className="flex justify-between font-sans text-sm text-gray-400">
+                  <span>Package Price:</span>
+                  <span>৳{currentPrice.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-sans text-sm text-[#00f0ff]">
+                  <span>Wallet Deduction:</span>
+                  <span>- ৳{walletDeduction.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-pixel text-sm text-[#ff00de] pt-1 border-t border-gray-700">
+                  <span>Remaining to Pay:</span>
+                  <span>৳{remainingToPay.toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+
+            {remainingToPay > 0 && (
+              <div>
+                <label className="block font-pixel text-[10px] text-gray-400 mb-2 uppercase">
+                  Select Gateway
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {["Bkash", "Nagad", "Rocket", "Upay"].map((method) => (
+                    <button
+                      key={method}
+                      type="button"
+                      onClick={() => setPaymentMethod(method.toLowerCase())}
+                      className={`border-4 p-3 font-sans font-bold text-sm transition-all btn-press uppercase ${
+                        paymentMethod.toLowerCase() === method.toLowerCase()
+                          ? "border-[#fcee0a] bg-[#0a0118] text-[#fcee0a] shadow-[4px_4px_0px_0px_#fcee0a]"
+                          : "border-[#00f0ff] bg-[#0a0118] text-white hover:border-[#fcee0a]"
+                      }`}
+                    >
+                      {method}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {result && (
+              <div
+                className={`border-4 p-3 font-sans text-sm text-center font-bold ${result.success ? "border-[#00f0ff] bg-[#00f0ff]/10 text-[#00f0ff]" : "border-[#ff00de] bg-[#ff00de]/10 text-[#ff00de]"}`}
+              >
+                {result.message}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || !selectedVariation}
+              className="w-full border-4 border-[#fcee0a] bg-[#ff00de] py-4 font-sans font-bold text-lg text-white shadow-[6px_6px_0px_0px_#fcee0a] btn-press hover:bg-[#fcee0a] hover:text-black hover:border-black hover:shadow-[2px_2px_0px_0px_#fcee0a] transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase"
+            >
+              {loading
+                ? "Processing..."
+                : remainingToPay === 0
+                  ? "PAY WITH WALLET"
+                  : `PAY ৳${remainingToPay.toFixed(2)} VIA ${paymentMethod.toUpperCase()}`}
+            </button>
+          </div>
         </div>
-
-        {/* Summary */}
-        {selectedVariation && (
-          <div className="bg-zinc-950/50 rounded-xl p-5 border border-zinc-800">
-            <h4 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">
-              Order Summary
-            </h4>
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-500">Product</span>
-                <span className="font-medium text-zinc-200">{productName}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-500">Amount</span>
-                <span className="font-medium text-zinc-200">
-                  {Object.values(selectedVariation.attributes).join(" - ")}
-                </span>
-              </div>
-              <div className="flex justify-between pt-3 border-t border-zinc-800">
-                <span className="font-semibold text-zinc-200">Total</span>
-                <span className="text-xl font-bold text-white">
-                  ${selectedVariation.price}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Result */}
-        {result && (
-          <div
-            className={`p-4 rounded-xl text-sm border ${result.success ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border-rose-500/20"}`}
-          >
-            {result.message}
-          </div>
-        )}
-
-        {/* Submit */}
-        <Button
-          type="submit"
-          size="lg"
-          className="w-full text-base"
-          disabled={!selectedVariation || loading}
-        >
-          {loading
-            ? "Processing..."
-            : `Pay $${selectedVariation?.price || "0.00"}`}
-        </Button>
-      </form>
-    </Card>
+      </div>
+    </form>
   );
 }
