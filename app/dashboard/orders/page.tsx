@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import {
   ShoppingCart,
-  Loader2,
   X,
   CheckCircle,
   Clock,
@@ -11,6 +10,7 @@ import {
   Ban,
   Wallet,
 } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -79,12 +79,53 @@ export default function OrdersPage() {
     return "text-[#ff00de]";
   };
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-12 w-12 text-[#fcee0a] animate-spin" />
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="border-4 border-[#ff00de] bg-[#1a0b2e] p-6 shadow-hard-pink relative">
+          <div className="absolute inset-0 crt-overlay opacity-10 pointer-events-none" />
+          <div className="relative z-10 flex items-center gap-3">
+            <div className="h-8 w-8 bg-[#0a0118] border-2 border-[#ff00de]/30 animate-pulse" />
+            <div className="h-6 w-48 bg-[#0a0118] border-2 border-[#fcee0a]/30 animate-pulse" />
+          </div>
+        </div>
+
+        {/* Table Skeleton */}
+        <div className="border-4 border-[#00f0ff] bg-[#1a0b2e] shadow-hard-cyan relative">
+          <div className="absolute inset-0 crt-overlay opacity-10 pointer-events-none" />
+          <div className="relative z-10 overflow-x-auto p-4">
+            <table className="w-full">
+              <thead className="border-b-4 border-[#ff00de] bg-[#0a0118]">
+                <tr>
+                  {[...Array(6)].map((_, i) => (
+                    <th key={i} className="p-4 text-left">
+                      <div className="h-3 w-16 bg-[#1a0b2e] border border-[#00f0ff]/30 animate-pulse" />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...Array(4)].map((_, rowIdx) => (
+                  <tr key={rowIdx} className="border-b-2 border-gray-800">
+                    {[...Array(6)].map((_, colIdx) => (
+                      <td key={colIdx} className="p-4">
+                        <div
+                          className={`h-4 bg-[#1a0b2e] border border-[#00f0ff]/20 animate-pulse ${
+                            colIdx === 4 ? "w-12" : "w-24"
+                          }`}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     );
+  }
 
   return (
     <div className="space-y-6">
@@ -206,8 +247,12 @@ export default function OrdersPage() {
               </div>
 
               {selectedOrder.loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-12 w-12 text-[#fcee0a] animate-spin" />
+                // 🌟 RETRO MODAL LOADING STATE
+                <div className="flex flex-col items-center justify-center py-12 gap-4">
+                  <LoadingSpinner size="lg" />
+                  <p className="font-pixel text-xs text-[#00f0ff] animate-pulse">
+                    FETCHING ORDER DETAILS...
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4 font-sans text-sm">
@@ -276,7 +321,6 @@ export default function OrdersPage() {
 
                     <div className="sm:col-span-2" />
 
-                    {/* 🌟 SPLIT PAYMENT BREAKDOWN IN MODAL */}
                     {selectedOrder.is_split_payment && (
                       <div className="sm:col-span-2 border-y-2 border-dashed border-gray-700 py-4 space-y-2">
                         <div className="flex justify-between items-baseline">
@@ -310,7 +354,7 @@ export default function OrdersPage() {
                             {selectedOrder.payment_method || "Gateway"}
                           </span>
                           <span className="text-[#ff00de] font-bold">
-                            ৳{" "}
+                            {" "}
                             {parseFloat(
                               selectedOrder.gateway_amount || 0,
                             ).toFixed(2)}
@@ -319,7 +363,7 @@ export default function OrdersPage() {
                       </div>
                     )}
 
-                    <div className="sm:col-span-2 ">
+                    <div className="sm:col-span-2">
                       <p className="text-gray-400 text-[10px] uppercase mb-1">
                         Payment Method
                       </p>

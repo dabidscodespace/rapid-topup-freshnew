@@ -9,13 +9,13 @@ import {
   ArrowUpRight,
   ShoppingBag,
   RotateCcw,
-  Loader2,
   X,
 } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 export default function WalletPage() {
   const { user, updateUser, refreshUser } = useAuth();
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
   // Top-up Modal
@@ -27,7 +27,7 @@ export default function WalletPage() {
 
   useEffect(() => {
     fetchHistory();
-    refreshUser(); // Forces a fresh fetch of your balance from WordPress
+    refreshUser();
   }, []);
 
   const fetchHistory = async () => {
@@ -47,7 +47,7 @@ export default function WalletPage() {
     }
   };
 
-  const handleTopUp = async (e) => {
+  const handleTopUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setError("");
@@ -77,13 +77,12 @@ export default function WalletPage() {
           body: JSON.stringify({
             amount: amountNum,
             payment_method: method,
-            token: user?.token, // Fallback for header stripping
+            token: user?.token,
           }),
         },
       );
 
       const orderData = await orderRes.json();
-      console.log("🔍 Wallet Top-Up Response:", orderData); // 🌟 CHECK CONSOLE FOR EXACT ERROR
 
       if (!orderData.success) {
         setError(
@@ -107,7 +106,6 @@ export default function WalletPage() {
       );
 
       const payData = await payRes.json();
-      console.log("🔍 Payment Initiate Response:", payData);
 
       if (payData.success && payData.data?.payment_url) {
         window.location.href = payData.data.payment_url;
@@ -122,21 +120,21 @@ export default function WalletPage() {
     }
   };
 
-  const getTransactionIcon = (type) => {
+  const getTransactionIcon = (type: string) => {
     if (type === "deposit") return <ArrowUpRight className="h-4 w-4" />;
     if (type === "purchase") return <ShoppingBag className="h-4 w-4" />;
     if (type === "refund") return <RotateCcw className="h-4 w-4" />;
     return <History className="h-4 w-4" />;
   };
 
-  const getTransactionColor = (type) => {
+  const getTransactionColor = (type: string) => {
     if (type === "deposit") return "text-[#00f0ff]";
     if (type === "purchase") return "text-[#ff00de]";
     if (type === "refund") return "text-[#fcee0a]";
     return "text-gray-400";
   };
 
-  const getAmountPrefix = (type) => {
+  const getAmountPrefix = (type: string) => {
     if (type === "deposit" || type === "refund") return "+";
     return "-";
   };
@@ -188,8 +186,34 @@ export default function WalletPage() {
           </div>
 
           {loadingHistory ? (
-            <div className="p-8 flex justify-center">
-              <Loader2 className="h-8 w-8 text-[#fcee0a] animate-spin" />
+            // 🌟 RETRO SKELETON TABLE
+            <div className="overflow-x-auto p-4">
+              <table className="w-full">
+                <thead className="bg-[#0a0118] border-b-2 border-gray-800">
+                  <tr>
+                    {[...Array(5)].map((_, i) => (
+                      <th key={i} className="p-4 text-left">
+                        <div className="h-3 w-16 bg-[#1a0b2e] border border-[#00f0ff]/30 animate-pulse" />
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...Array(4)].map((_, rowIdx) => (
+                    <tr key={rowIdx} className="border-b-2 border-gray-800">
+                      {[...Array(5)].map((_, colIdx) => (
+                        <td key={colIdx} className="p-4">
+                          <div
+                            className={`h-4 bg-[#1a0b2e] border border-[#00f0ff]/20 animate-pulse ${
+                              colIdx === 4 ? "w-12 ml-auto" : "w-24"
+                            }`}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : history.length === 0 ? (
             <div className="p-8 text-center">
@@ -335,11 +359,16 @@ export default function WalletPage() {
                   className="w-full border-4 border-[#fcee0a] bg-[#ff00de] py-4 font-sans font-bold text-lg text-white shadow-hard-pink btn-press hover:bg-[#fcee0a] hover:text-black hover:border-black transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase flex items-center justify-center gap-2 mt-4"
                 >
                   {submitting ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <>
+                      <LoadingSpinner size="sm" className="text-black" />
+                      <span>REDIRECTING...</span>
+                    </>
                   ) : (
-                    <Plus className="h-5 w-5" />
+                    <>
+                      <Plus className="h-5 w-5" />
+                      <span>PROCEED TO PAYMENT</span>
+                    </>
                   )}
-                  {submitting ? "REDIRECTING..." : "PROCEED TO PAYMENT"}
                 </button>
               </form>
             </div>

@@ -1,9 +1,12 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import HeroSlider from "@/components/HeroSlider";
 import CategoryNav from "@/components/CategoryNav";
 import ProductSection from "@/components/ProductSection";
 
 // ==========================================
-// CATEGORY CONFIGURATION (Use your actual WP Category IDs)
+// CATEGORY CONFIGURATION
 // ==========================================
 const CATEGORIES = {
   POPULAR: 15,
@@ -11,20 +14,28 @@ const CATEGORIES = {
   BATTLE_ROYALE: 53,
 };
 
-async function getProducts() {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_WP_URL}/wp-json/headless/v1/products`,
-    {
-      next: { revalidate: 60 },
-    },
-  );
-  if (!res.ok) throw new Error("Failed to fetch products");
-  const data = await res.json();
-  return data.data || [];
-}
+export default function HomePage() {
+  const [allProducts, setAllProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default async function HomePage() {
-  const allProducts = await getProducts();
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_WP_URL}/wp-json/headless/v1/products`,
+        );
+        if (!res.ok) throw new Error("Failed to fetch products");
+        const data = await res.json();
+        setAllProducts(data.data || []);
+      } catch (error) {
+        console.error("Failed to fetch products:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   const popularGames = allProducts
     .filter((p: any) => p.categories?.includes(CATEGORIES.POPULAR))
@@ -43,26 +54,35 @@ export default async function HomePage() {
       {/* 1. Hero Slider */}
       <div className="pt-8 pb-4 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <HeroSlider />
+          {loading ? (
+            <div className="border-4 border-[#00f0ff] bg-[#1a0b2e] p-6 shadow-hard-cyan relative h-96 animate-pulse">
+              <div className="absolute inset-0 crt-overlay opacity-10 pointer-events-none" />
+              <div className="h-full w-full bg-[#0a0118] border-2 border-[#00f0ff]/30" />
+            </div>
+          ) : (
+            <HeroSlider />
+          )}
         </div>
       </div>
 
       {/* 2. Sticky Category Navigation */}
       <CategoryNav />
 
-      {/* 3. Product Sections */}
+      {/* 3. Product Sections (Pass the loading prop!) */}
       <ProductSection
         id="popular"
         title="🔥 Popular Games"
         subtitle="Most topped up games this week"
         products={popularGames}
+        loading={loading}
       />
 
       <ProductSection
         id="entertainment"
-        title="🎬 Entertainment"
+        title=" Entertainment"
         subtitle="Netflix, Spotify, YouTube Premium and more"
         products={entertainmentGames}
+        loading={loading}
       />
 
       <ProductSection
@@ -70,6 +90,7 @@ export default async function HomePage() {
         title="⚔️ Battle Royale"
         subtitle="Dominate the battlefield"
         products={battleRoyaleGames}
+        loading={loading}
       />
 
       <ProductSection
@@ -77,6 +98,7 @@ export default async function HomePage() {
         title="🎮 All Games"
         subtitle="Browse our complete catalog"
         products={allProducts}
+        loading={loading}
       />
 
       {/* Footer Spacer */}

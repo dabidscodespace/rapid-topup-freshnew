@@ -1,3 +1,5 @@
+"use client";
+
 interface LoadingSpinnerProps {
   size?: "sm" | "md" | "lg";
   className?: string;
@@ -8,43 +10,69 @@ export function LoadingSpinner({
   className = "",
 }: LoadingSpinnerProps) {
   const sizes = {
-    sm: "h-4 w-4",
-    md: "h-8 w-8",
-    lg: "h-12 w-12",
+    sm: "h-4 w-4 border-2",
+    md: "h-8 w-8 border-4",
+    lg: "h-12 w-12 border-4",
   };
 
   return (
-    <svg
-      className={`animate-spin text-blue-600 dark:text-blue-400 ${sizes[size]} ${className}`}
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
+    <div className={`relative ${sizes[size]} ${className}`}>
+      {/* Outer blocky ring */}
+      <div
+        className="absolute inset-0 border-2 border-[var(--neon-cyan)]/30"
+        style={{ borderRadius: "0" }}
       />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+      {/* Spinning neon segments */}
+      <div
+        className="absolute inset-0 border-t-2 border-[var(--neon-cyan)] border-r-2 border-[var(--neon-pink)] animate-spin"
+        style={{ borderRadius: "0" }}
       />
-    </svg>
+    </div>
   );
 }
 
-// Full page loader
-export function PageLoader() {
+// Full page loader (for global loading.tsx or manual overlays)
+export function PageLoader({ message = "LOADING..." }: { message?: string }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-      <div className="text-center">
-        <LoadingSpinner size="lg" />
-        <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[var(--dark-bg)]">
+      <div className="fixed inset-0 crt-overlay opacity-20 pointer-events-none" />
+      <div className="fixed inset-0 retro-grid opacity-30 pointer-events-none" />
+
+      <div className="relative z-10 text-center">
+        <div className="relative mb-8">
+          <div className="absolute inset-0 bg-[var(--neon-cyan)] blur-2xl opacity-20 animate-pulse" />
+          <div
+            className="h-16 w-16 border-4 border-[var(--neon-cyan)] border-t-[var(--neon-pink)] animate-spin mx-auto"
+            style={{ borderRadius: "0" }}
+          />
+        </div>
+
+        <h2 className="font-pixel text-xl text-[var(--neon-yellow)] text-glow-yellow mb-6 animate-pulse">
+          {message}
+        </h2>
+
+        {/* Retro Progress Bar */}
+        <div
+          className="w-64 h-4 border-4 border-[var(--neon-cyan)] bg-[#1a0b2e] p-1 mx-auto"
+          style={{ borderRadius: "0" }}
+        >
+          <div
+            className="h-full bg-gradient-to-r from-[var(--neon-cyan)] via-[var(--neon-pink)] to-[var(--neon-yellow)] animate-[loading_2s_ease-in-out_infinite]"
+            style={{ backgroundSize: "200% 100%", borderRadius: "0" }}
+          />
+        </div>
       </div>
+
+      <style jsx>{`
+        @keyframes loading {
+          0% {
+            background-position: 200% 0;
+          }
+          100% {
+            background-position: -200% 0;
+          }
+        }
+      `}</style>
     </div>
   );
 }

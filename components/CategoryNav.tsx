@@ -24,7 +24,7 @@ export default function CategoryNav() {
   };
 
   return (
-    <div className="sticky top-0 z-30 w-full py-4 border-b-4 border-[#ff00de] bg-[#0a0118]/95 backdrop-blur-sm">
+    <div className="sticky top-0 z-30 w-full py-4 border-b-4 border-[#ff00de] bg-[#0a0118]/95 backdrop-blur-sm overflow-x-hidden">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <Swiper
           modules={[FreeMode]}

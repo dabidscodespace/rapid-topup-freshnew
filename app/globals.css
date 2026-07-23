@@ -106,3 +106,113 @@ body {
   opacity: 1;
   box-shadow: 0 0 10px var(--neon-yellow);
 }
+
+/* ==========================================
+   RETRO LOADING & SKELETON ANIMATIONS
+   ========================================== */
+
+/* 1. Blocky Retro Loading Spinner */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--dark-bg);
+  border-top: 4px solid var(--neon-cyan);
+  border-right: 4px solid var(--neon-pink);
+  border-radius: 0; /* Keeps it blocky, no rounded corners */
+  animation: spin-retro 1s linear infinite;
+}
+
+@keyframes spin-retro {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 2. Neon Pulse for Skeleton Loaders */
+.skeleton-pulse {
+  background-color: #1a0b2e;
+  border: 2px solid rgba(0, 240, 255, 0.2);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    border-color: rgba(0, 240, 255, 0.2);
+  }
+  50% {
+    opacity: 0.6;
+    border-color: rgba(252, 238, 10, 0.4); /* Shifts to yellow glow */
+  }
+}
+
+/* 3. Full Screen Loading Overlay (Matches your theme) */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background-color: var(--dark-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Adds a subtle retro grid to the loading screen */
+.loading-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 0, 222, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* 4. Retro Blinking Text Effect */
+.loading-text-blink {
+  animation: text-blink 1s steps(2, start) infinite;
+}
+
+@keyframes text-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* 5. Arcade Progress Bar */
+.loading-progress {
+  width: 200px;
+  height: 8px;
+  background: #1a0b2e;
+  border: 2px solid var(--neon-cyan);
+  margin-top: 20px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 0;
+}
+
+.loading-progress::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 40%;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-pink));
+  animation: progress-slide 1.5s ease-in-out infinite;
+}
+
+@keyframes progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
