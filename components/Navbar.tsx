@@ -65,7 +65,7 @@ export default function Navbar() {
           <div className="flex h-16 md:h-20 items-center justify-between">
             {/*  LOGO SECTION */}
             <Link href="/" className="flex items-center group">
-              <div className="relative h-16 w-30 transition-transform group-hover:scale-105">
+              <div className="relative h-16 w-25 transition-transform group-hover:scale-105">
                 <Image
                   src="/images/logo.png"
                   alt="8BitTopUp Logo"
