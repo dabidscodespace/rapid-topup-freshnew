@@ -139,8 +139,8 @@ export default function ProfilePage() {
     }
   };
 
-  const handleAvatarSelect = (e) => {
-    const file = e.target.files[0];
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
       setAvatarFile(file);
       const reader = new FileReader();
