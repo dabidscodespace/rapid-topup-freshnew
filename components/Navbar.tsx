@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image"; // 🌟 Import Image component
 import { Search, Menu, Gamepad2, ChevronDown, Coins } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import SearchModal from "./SearchModal";
@@ -48,20 +49,20 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-30 w-full border-b-4 border-[#ff00de] bg-[#0a0118]/95 backdrop-blur-sm">
+      <nav className="z-30 w-full border-b-4 border-[#ff00de] bg-[#0a0118]/95 backdrop-blur-sm">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-20 items-center justify-between">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="flex h-10 w-10 items-center justify-center border-2 border-[#00f0ff] bg-[#1a0b2e] shadow-[3px_3px_0px_0px_#00f0ff] group-hover:shadow-[1px_1px_0px_0px_#00f0ff] group-hover:translate-x-[2px] group-hover:translate-y-[2px] transition-all">
-                <Gamepad2 className="h-6 w-6 text-[#00f0ff]" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-pixel text-sm text-[#fcee0a] text-glow-yellow leading-none">
-                  COINHUB
-                </span>
-                <span className="font-pixel text-[8px] text-[#ff00de] leading-none mt-1">
-                  ARCADE
-                </span>
+          <div className="flex h-16 md:h-20 items-center justify-between">
+            
+            {/*  LOGO SECTION */}
+            <Link href="/" className="flex items-center group">
+              <div className="relative h-16 w-30 transition-transform group-hover:scale-105">
+                <Image 
+                  src="/images/logo.png" 
+                  alt="8BitTopUp Logo" 
+                  fill
+                  priority // Loads immediately for better LCP score
+                  className="object-contain pixelated" // Keeps edges sharp
+                />
               </div>
             </Link>
 

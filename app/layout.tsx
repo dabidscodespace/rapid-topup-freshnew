@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { AuthProvider } from "@/lib/AuthContext";
+import FloatingSupport from "@/components/FloatingSupport"; // 🌟 ADD THIS IMPORT
 
 export const metadata: Metadata = {
   title: "CoinHub Arcade - Top Up",
@@ -30,6 +31,9 @@ export default function RootLayout({
               </p>
             </footer>
           </div>
+
+          {/* 🌟 ADD THE FLOATING SUPPORT BUTTON HERE */}
+          <FloatingSupport />
         </AuthProvider>
       </body>
     </html>

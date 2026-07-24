@@ -4,17 +4,18 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { Wallet, Check } from "lucide-react";
+import Link from "next/link"; // 🌟 Added Link import
 
 export default function CheckoutForm({
   productId,
   productName,
   variations,
-  fields,
+  fields = [],
 }: {
   productId: number;
   productName: string;
   variations: any[];
-  fields: any[];
+  fields?: any[];
 }) {
   const { user, refreshUser } = useAuth();
   const [selectedVariation, setSelectedVariation] = useState<any>(null);
@@ -43,8 +44,18 @@ export default function CheckoutForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    //  SAFETY CHECK: Prevent submission if not logged in
+    if (!user) {
+      return setResult({
+        success: false,
+        message: "Please log in to complete your purchase.",
+      });
+    }
+
+    const safeFields = fields || [];
+
     // 1. Validate required fields
-    for (const field of fields) {
+    for (const field of safeFields) {
       if (field.required && !fieldValues[field.id]) {
         return setResult({
           success: false,
@@ -53,7 +64,7 @@ export default function CheckoutForm({
       }
     }
 
-    // 2. Validate variation selection AND stock status (Safety Check)
+    // 2. Validate variation selection AND stock status
     if (!selectedVariation) {
       return setResult({ success: false, message: "Please select a package." });
     }
@@ -79,15 +90,16 @@ export default function CheckoutForm({
     setLoading(true);
     setResult(null);
 
-    const customFieldsPayload = fields
+    const customFieldsPayload = safeFields
       .map((field: any) => ({
         label: field.name || field.label || "Custom Field",
         value: fieldValues[field.id] || "",
       }))
       .filter((f: any) => f.value !== "");
 
-    let mainIdValue = "GUEST";
-    for (const field of fields) {
+    let mainIdValue = "";
+
+    for (const field of safeFields) {
       const val = fieldValues[field.id];
       const labelLower = (field.label || "").toLowerCase();
       const nameLower = (field.name || "").toLowerCase();
@@ -97,23 +109,25 @@ export default function CheckoutForm({
           labelLower.includes("player") ||
           labelLower.includes("id") ||
           nameLower.includes("uid") ||
-          nameLower.includes("player"))
+          nameLower.includes("player") ||
+          nameLower.includes("id"))
       ) {
         mainIdValue = val;
         break;
       }
     }
-    if (mainIdValue === "GUEST") {
+
+    if (mainIdValue === "" && safeFields.length > 0) {
       const firstVal = Object.values(fieldValues).find(
-        (v: any) => v && v.trim() !== "",
+        (v: any) => v && String(v).trim() !== "",
       );
-      if (firstVal) mainIdValue = firstVal;
+      if (firstVal) mainIdValue = String(firstVal);
     }
 
     const payload = {
       variation_id: selectedVariation.id,
-      game_uid: mainIdValue,
-      player_id: mainIdValue,
+      game_uid: mainIdValue || null,
+      player_id: mainIdValue || null,
       payment_method: remainingToPay > 0 ? paymentMethod : "wallet",
       guest_email: user ? user.email : fieldValues.email || "guest@example.com",
       user_id: user ? user.user_id : 0,
@@ -121,15 +135,39 @@ export default function CheckoutForm({
       custom_fields: customFieldsPayload,
     };
 
+    const token = user?.token;
+
+    if (!token) {
+      setLoading(false);
+      return setResult({
+        success: false,
+        message: "Session expired. Please log in again.",
+      });
+    }
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_WP_URL}/wp-json/headless/v1/orders`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify(payload),
         },
       );
+
+      if (res.status === 401) {
+        setLoading(false);
+        return setResult({
+          success: false,
+          message: "Authentication failed. Please log out and log in again.",
+        });
+      }
+
       const data = await res.json();
 
       if (data.success) {
@@ -145,7 +183,7 @@ export default function CheckoutForm({
             `${process.env.NEXT_PUBLIC_WP_URL}/wp-json/headless/v1/uddoktapay/initiate`,
             {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers,
               body: JSON.stringify({
                 order_id: orderId,
                 payment_method: paymentMethod,
@@ -180,7 +218,7 @@ export default function CheckoutForm({
 
   return (
     <>
-      {/* 🌟 CALM CYBERPUNK TERMINAL MODAL */}
+      {/* LOADING MODAL */}
       {loading &&
         createPortal(
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-[#0a0118]/80 backdrop-blur-md">
@@ -199,15 +237,12 @@ export default function CheckoutForm({
                   }}
                 />
               </div>
-
               <h3 className="font-sans text-lg text-white font-semibold mb-2 tracking-wide">
                 Connecting to Gateway
               </h3>
-
               <p className="font-mono text-xs text-[#00f0ff]/70 mb-6">
                 Initializing secure handshake...
               </p>
-
               <div className="w-full h-1 bg-[#0a0118] rounded-full overflow-hidden">
                 <div
                   className="h-full bg-[#00f0ff] animate-pulse"
@@ -221,8 +256,8 @@ export default function CheckoutForm({
 
       {/* ACTUAL FORM */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* PANEL 1: Account Details */}
-        {fields.length > 0 && (
+        {/* PANEL 1: Account Details (Visible to everyone) */}
+        {fields && fields.length > 0 && (
           <div
             className="border-4 bg-[#1a0b2e] p-5 relative"
             style={{
@@ -263,7 +298,7 @@ export default function CheckoutForm({
           </div>
         )}
 
-        {/* PANEL 2: Select Package (WITH STOCK LOGIC) */}
+        {/* PANEL 2: Select Package (Visible to everyone) */}
         <div
           className="border-4 bg-[#1a0b2e] p-5 relative"
           style={{
@@ -283,8 +318,6 @@ export default function CheckoutForm({
               {variations.map((v: any) => {
                 const isSelected = selectedVariation?.id === v.id;
                 const name = Object.values(v.attributes).join(" - ");
-
-                // 🌟 SMART STOCK LOGIC
                 const stockQty = v.stock_quantity;
                 const isCriticalStock =
                   v.is_in_stock && stockQty !== null && stockQty <= 3;
@@ -308,27 +341,21 @@ export default function CheckoutForm({
                           : "border-[#00f0ff] bg-[#0a0118] text-white hover:border-[#fcee0a] hover:text-[#fcee0a]"
                     }`}
                   >
-                    {/* 🔴 CRITICAL STOCK BADGE (3 or less) */}
                     {isCriticalStock && (
                       <div className="absolute top-0 right-0 bg-[#ff0000] text-white font-pixel text-[8px] px-2 py-1 border-l-2 border-b-2 border-white animate-pulse z-10">
                         ONLY {stockQty} LEFT!
                       </div>
                     )}
-
-                    {/* 🟡 LOW/MODERATE STOCK BADGE (4 to 10) */}
                     {isLowStock && (
                       <div className="absolute top-0 right-0 bg-[#fcee0a] text-black font-pixel text-[8px] px-2 py-1 border-l-2 border-b-2 border-white z-10">
                         {stockQty} IN STOCK
                       </div>
                     )}
-
-                    {/* SOLD OUT BADGE */}
                     {!v.is_in_stock && (
                       <div className="absolute top-0 right-0 bg-[#ff0000] text-white font-pixel text-[8px] px-2 py-1 border-l-2 border-b-2 border-white z-10">
                         SOLD OUT
                       </div>
                     )}
-
                     <div
                       className={`font-bold text-sm mb-1 uppercase leading-tight mt-2 ${!v.is_in_stock ? "line-through decoration-2 decoration-[#ff0000]" : ""}`}
                     >
@@ -346,7 +373,7 @@ export default function CheckoutForm({
           </div>
         </div>
 
-        {/* PANEL 3: Payment & Checkout */}
+        {/* PANEL 3: Payment Method (LOCKED FOR GUESTS) */}
         <div
           className="border-4 bg-[#1a0b2e] p-5 relative"
           style={{
@@ -363,109 +390,130 @@ export default function CheckoutForm({
               Payment Method
             </h3>
 
-            <div className="space-y-5">
-              {user &&
-                userBalance > 0 &&
-                selectedVariation &&
-                selectedVariation.is_in_stock && (
-                  <div className="border-2 border-[#00f0ff] bg-[#0a0118] p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-[#00f0ff]/10 rounded-none">
-                        <Wallet className="h-5 w-5 text-[#00f0ff]" />
+            {/* 🌟 LOGIN GATE FOR PAYMENT SECTION */}
+            {!user ? (
+              <div className="border-2 border-dashed border-[#ff00de] bg-[#0a0118] p-8 text-center">
+                <h4 className="font-pixel text-sm text-[#ff00de] mb-2 uppercase">
+                  Login Required
+                </h4>
+                <p className="font-sans text-xs text-gray-400 mb-4 max-w-md mx-auto">
+                  Please log in to your account to complete your purchase, use
+                  your wallet balance, and track your order status.
+                </p>
+                <Link
+                  href="/login"
+                  className="inline-block border-2 border-[#00f0ff] bg-[#1a0b2e] px-6 py-2 font-pixel text-xs text-[#00f0ff] btn-press hover:bg-[#00f0ff] hover:text-black transition-all"
+                >
+                  GO TO LOGIN
+                </Link>
+              </div>
+            ) : (
+              // 🌟 ACTUAL PAYMENT OPTIONS (Only visible if logged in)
+              <div className="space-y-5">
+                {userBalance > 0 &&
+                  selectedVariation &&
+                  selectedVariation.is_in_stock && (
+                    <div className="border-2 border-[#00f0ff] bg-[#0a0118] p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-[#00f0ff]/10 rounded-none">
+                          <Wallet className="h-5 w-5 text-[#00f0ff]" />
+                        </div>
+                        <div>
+                          <p className="font-sans text-sm font-bold text-white">
+                            Use Wallet Balance
+                          </p>
+                          <p className="font-pixel text-[10px] text-[#fcee0a]">
+                            Available: ৳{userBalance.toFixed(2)}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-sans text-sm font-bold text-white">
-                          Use Wallet Balance
-                        </p>
-                        <p className="font-pixel text-[10px] text-[#fcee0a]">
-                          Available: ৳{userBalance.toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setUseWallet(!useWallet)}
-                      className={`relative w-14 h-7 border-2 transition-all btn-press ${
-                        useWallet
-                          ? "border-[#fcee0a] bg-[#fcee0a]/20"
-                          : "border-gray-600 bg-[#0a0118]"
-                      }`}
-                    >
-                      <div
-                        className={`absolute top-0.5 w-5 h-5 bg-[#fcee0a] transition-all ${useWallet ? "left-[34px]" : "left-0.5"}`}
-                      />
-                      {useWallet && (
-                        <Check className="absolute left-1 top-1 h-4 w-4 text-black" />
-                      )}
-                    </button>
-                  </div>
-                )}
-
-              {useWallet &&
-                walletDeduction > 0 &&
-                selectedVariation?.is_in_stock && (
-                  <div className="bg-[#0a0118] p-3 border-2 border-dashed border-[#fcee0a] space-y-1">
-                    <div className="flex justify-between font-sans text-sm text-gray-400">
-                      <span>Package Price:</span>
-                      <span>৳{currentPrice.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between font-sans text-sm text-[#00f0ff]">
-                      <span>Wallet Deduction:</span>
-                      <span>- {walletDeduction.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between font-pixel text-sm text-[#ff00de] pt-1 border-t border-gray-700">
-                      <span>Remaining to Pay:</span>
-                      <span>৳{remainingToPay.toFixed(2)}</span>
-                    </div>
-                  </div>
-                )}
-
-              {remainingToPay > 0 && selectedVariation?.is_in_stock && (
-                <div>
-                  <label className="block font-pixel text-[10px] text-gray-400 mb-2 uppercase">
-                    Select Gateway
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {["Bkash", "Nagad", "Rocket", "Upay"].map((method) => (
                       <button
-                        key={method}
                         type="button"
-                        onClick={() => setPaymentMethod(method.toLowerCase())}
-                        className={`border-4 p-3 font-sans font-bold text-sm transition-all btn-press uppercase ${
-                          paymentMethod.toLowerCase() === method.toLowerCase()
-                            ? "border-[#fcee0a] bg-[#0a0118] text-[#fcee0a] shadow-[4px_4px_0px_0px_#fcee0a]"
-                            : "border-[#00f0ff] bg-[#0a0118] text-white hover:border-[#fcee0a]"
+                        onClick={() => setUseWallet(!useWallet)}
+                        className={`relative w-14 h-7 border-2 transition-all btn-press ${
+                          useWallet
+                            ? "border-[#fcee0a] bg-[#fcee0a]/20"
+                            : "border-gray-600 bg-[#0a0118]"
                         }`}
                       >
-                        {method}
+                        <div
+                          className={`absolute top-0.5 w-5 h-5 bg-[#fcee0a] transition-all ${useWallet ? "left-[34px]" : "left-0.5"}`}
+                        />
+                        {useWallet && (
+                          <Check className="absolute left-1 top-1 h-4 w-4 text-black" />
+                        )}
                       </button>
-                    ))}
+                    </div>
+                  )}
+
+                {useWallet &&
+                  walletDeduction > 0 &&
+                  selectedVariation?.is_in_stock && (
+                    <div className="bg-[#0a0118] p-3 border-2 border-dashed border-[#fcee0a] space-y-1">
+                      <div className="flex justify-between font-sans text-sm text-gray-400">
+                        <span>Package Price:</span>
+                        <span>৳{currentPrice.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-sans text-sm text-[#00f0ff]">
+                        <span>Wallet Deduction:</span>
+                        <span>- {walletDeduction.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-pixel text-sm text-[#ff00de] pt-1 border-t border-gray-700">
+                        <span>Remaining to Pay:</span>
+                        <span>৳{remainingToPay.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
+
+                {remainingToPay > 0 && selectedVariation?.is_in_stock && (
+                  <div>
+                    <label className="block font-pixel text-[10px] text-gray-400 mb-2 uppercase">
+                      Select Gateway
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {["Bkash", "Nagad", "Rocket", "Upay"].map((method) => (
+                        <button
+                          key={method}
+                          type="button"
+                          onClick={() => setPaymentMethod(method.toLowerCase())}
+                          className={`border-4 p-3 font-sans font-bold text-sm transition-all btn-press uppercase ${
+                            paymentMethod.toLowerCase() === method.toLowerCase()
+                              ? "border-[#fcee0a] bg-[#0a0118] text-[#fcee0a] shadow-[4px_4px_0px_0px_#fcee0a]"
+                              : "border-[#00f0ff] bg-[#0a0118] text-white hover:border-[#fcee0a]"
+                          }`}
+                        >
+                          {method}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {result && (
-                <div
-                  className={`border-4 p-3 font-sans text-sm text-center font-bold ${result.success ? "border-[#00f0ff] bg-[#00f0ff]/10 text-[#00f0ff]" : "border-[#ff00de] bg-[#ff00de]/10 text-[#ff00de]"}`}
+                {result && (
+                  <div
+                    className={`border-4 p-3 font-sans text-sm text-center font-bold ${result.success ? "border-[#00f0ff] bg-[#00f0ff]/10 text-[#00f0ff]" : "border-[#ff00de] bg-[#ff00de]/10 text-[#ff00de]"}`}
+                  >
+                    {result.message}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={
+                    !selectedVariation || !selectedVariation?.is_in_stock
+                  }
+                  className="w-full border-4 border-[#fcee0a] bg-[#ff00de] py-4 font-sans font-bold text-lg text-white shadow-[6px_6px_0px_0px_#fcee0a] btn-press hover:bg-[#fcee0a] hover:text-black hover:border-black hover:shadow-[2px_2px_0px_0px_#fcee0a] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:border-gray-600 disabled:text-gray-500 disabled:shadow-none uppercase"
                 >
-                  {result.message}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={!selectedVariation || !selectedVariation?.is_in_stock}
-                className="w-full border-4 border-[#fcee0a] bg-[#ff00de] py-4 font-sans font-bold text-lg text-white shadow-[6px_6px_0px_0px_#fcee0a] btn-press hover:bg-[#fcee0a] hover:text-black hover:border-black hover:shadow-[2px_2px_0px_0px_#fcee0a] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:border-gray-600 disabled:text-gray-500 disabled:shadow-none uppercase"
-              >
-                {!selectedVariation
-                  ? "SELECT A PACKAGE FIRST"
-                  : !selectedVariation.is_in_stock
-                    ? "OUT OF STOCK"
-                    : remainingToPay === 0
-                      ? "PAY WITH WALLET"
-                      : `PAY ৳${remainingToPay.toFixed(2)} VIA ${paymentMethod.toUpperCase()}`}
-              </button>
-            </div>
+                  {!selectedVariation
+                    ? "SELECT A PACKAGE FIRST"
+                    : !selectedVariation.is_in_stock
+                      ? "OUT OF STOCK"
+                      : remainingToPay === 0
+                        ? "PAY WITH WALLET"
+                        : `PAY ৳${remainingToPay.toFixed(2)} VIA ${paymentMethod.toUpperCase()}`}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </form>
