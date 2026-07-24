@@ -11,7 +11,24 @@ import {
   LogOut,
 } from "lucide-react";
 
-export default function MobileMenu({ isOpen, onClose, user, onLogout }) {
+interface MobileMenuProps {
+  isOpen: boolean;
+  onClose: () => void;
+  user: {
+    name: string;
+    email: string;
+    avatar_url?: string;
+    balance: number;
+  } | null;
+  onLogout: () => void;
+}
+
+export default function MobileMenu({
+  isOpen,
+  onClose,
+  user,
+  onLogout,
+}: MobileMenuProps) {
   if (!isOpen) return null;
 
   const authLinks = [
