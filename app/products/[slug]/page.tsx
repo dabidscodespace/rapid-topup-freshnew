@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Zap, ShieldCheck, Globe, Headphones } from "lucide-react";
@@ -8,8 +9,32 @@ import CheckoutForm from "./CheckoutForm";
 
 export default function ProductPage() {
   const { slug } = useParams();
-  const [product, setProduct] = useState<any>(null);
-  const [fields, setFields] = useState<any[]>([]);
+  // Typed product & fields to avoid `any`
+  type Variation = Record<string, unknown>;
+  type Product = {
+    id: number | string;
+    name: string;
+    banner_url?: string | null;
+    image_url?: string | null;
+    variations?: Variation[];
+    description?: string | null;
+    short_description?: string | null;
+    delivery_title?: string | null;
+    delivery_subtitle?: string | null;
+    region_title?: string | null;
+    region_subtitle?: string | null;
+  };
+
+  type Field = {
+    id?: string | number;
+    name?: string;
+    label?: string;
+    type?: string;
+    options?: unknown;
+  };
+
+  const [product, setProduct] = useState<Product | null>(null);
+  const [fields, setFields] = useState<Field[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState<"product" | "description">(
@@ -77,7 +102,7 @@ export default function ProductPage() {
                 </div>
               </div>
               <div className="h-8 w-3/4 bg-[#1a0b2e] border-4 border-[#fcee0a]/30 animate-pulse" />
-              <div className="border-4 border-[#ff00de] bg-[#1a0b2e] p-6 shadow-hard-pink relative min-h-[200px]">
+              <div className="border-4 border-[#ff00de] bg-[#1a0b2e] p-6 shadow-hard-pink relative min-h-50">
                 <div className="space-y-4">
                   <div className="h-4 w-1/3 bg-[#0a0118] border-2 border-[#ff00de]/30 animate-pulse" />
                   <div className="h-4 w-full bg-[#0a0118] border-2 border-[#ff00de]/20 animate-pulse" />
@@ -149,14 +174,16 @@ export default function ProductPage() {
           {/* Banner / Image */}
           <div className="border-4 border-[#00f0ff] bg-[#1a0b2e] shadow-hard-cyan relative overflow-hidden">
             <div className="relative h-72 w-full">
-              <img
+              <Image
                 src={
                   product.banner_url ||
                   product.image_url ||
                   "https://placehold.co/800x400/1a0b2e/00f0ff?text=NO+IMAGE"
                 }
                 alt={product.name}
-                className="h-full w-full object-cover"
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 800px"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#1a0b2e] via-transparent to-transparent pointer-events-none" />
             </div>
@@ -207,9 +234,13 @@ export default function ProductPage() {
                   regionSub={product.region_subtitle || "REGION"}
                 />
                 <CheckoutForm
-                  productId={product.id}
+                  productId={
+                    typeof product.id === "number"
+                      ? product.id
+                      : Number(product.id)
+                  }
                   productName={product.name}
-                  variations={product.variations}
+                  variations={product.variations ?? []}
                   fields={fields}
                 />
               </div>
@@ -225,7 +256,9 @@ export default function ProductPage() {
                       <div
                         dangerouslySetInnerHTML={{
                           __html:
-                            product.description || product.short_description,
+                            product.description ||
+                            product.short_description ||
+                            "",
                         }}
                       />
                     ) : (
@@ -277,7 +310,9 @@ export default function ProductPage() {
                     <div
                       dangerouslySetInnerHTML={{
                         __html:
-                          product.description || product.short_description,
+                          product.description ||
+                          product.short_description ||
+                          "",
                       }}
                     />
                   ) : (
@@ -302,9 +337,13 @@ export default function ProductPage() {
                 regionSub={product.region_subtitle || "REGION"}
               />
               <CheckoutForm
-                productId={product.id}
+                productId={
+                  typeof product.id === "number"
+                    ? product.id
+                    : Number(product.id)
+                }
                 productName={product.name}
-                variations={product.variations}
+                variations={product.variations ?? []}
                 fields={fields}
               />
             </div>

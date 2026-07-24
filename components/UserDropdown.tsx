@@ -1,9 +1,24 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { User, ShoppingBag, Wallet, LogOut, ArrowUpRight } from "lucide-react";
 
-export default function UserDropdown({ user, isOpen, onClose, onLogout }) {
+type UserType = {
+  avatar_url?: string | null;
+  name: string;
+  email: string;
+  balance?: number | string | null;
+};
+
+type Props = {
+  user: UserType;
+  isOpen: boolean;
+  onClose: () => void;
+  onLogout: () => void;
+};
+
+export default function UserDropdown({ user, isOpen, onClose, onLogout }: Props) {
   if (!isOpen) return null;
 
   return (
@@ -12,10 +27,13 @@ export default function UserDropdown({ user, isOpen, onClose, onLogout }) {
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 border-2 border-[#00f0ff] bg-[#1a0b2e] flex items-center justify-center overflow-hidden">
             {user.avatar_url ? (
-              <img
+              <Image
                 src={user.avatar_url}
                 alt="Avatar"
+                width={40}
+                height={40}
                 className="h-full w-full object-cover"
+                unoptimized
               />
             ) : (
               <span className="text-[#00f0ff] font-pixel text-lg">

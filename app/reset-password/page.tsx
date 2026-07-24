@@ -43,7 +43,8 @@ function ResetPasswordContent() {
   const key = searchParams.get("key");
   const email = searchParams.get("email");
 
-  const [status, setStatus] = useState("loading"); // loading, valid, invalid, success
+  const initialStatus: StatusType = !key || !email ? "invalid" : "loading";
+  const [status, setStatus] = useState<StatusType>(initialStatus); // loading, valid, invalid, success
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -52,7 +53,6 @@ function ResetPasswordContent() {
 
   useEffect(() => {
     if (!key || !email) {
-      setStatus("invalid");
       return;
     }
 
