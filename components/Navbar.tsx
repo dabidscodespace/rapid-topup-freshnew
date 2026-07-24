@@ -9,12 +9,19 @@ import SearchModal from "./SearchModal";
 import MobileMenu from "./MobileMenu";
 import UserDropdown from "./UserDropdown";
 
+interface DisplayUser {
+  name: string;
+  email: string;
+  balance: number;
+  avatar_url: string | null;
+}
+
 export default function Navbar() {
   const { user, loading, logout, refreshUser } = useAuth();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (user?.token) {
@@ -33,8 +40,12 @@ export default function Navbar() {
     : null;
 
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        event.target instanceof Node &&
+        !dropdownRef.current.contains(event.target)
+      ) {
         setIsDropdownOpen(false);
       }
     }
@@ -52,13 +63,12 @@ export default function Navbar() {
       <nav className="z-30 w-full border-b-4 border-[#ff00de] bg-[#0a0118]/95 backdrop-blur-sm">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 md:h-20 items-center justify-between">
-            
             {/*  LOGO SECTION */}
             <Link href="/" className="flex items-center group">
               <div className="relative h-16 w-30 transition-transform group-hover:scale-105">
-                <Image 
-                  src="/images/logo.png" 
-                  alt="8BitTopUp Logo" 
+                <Image
+                  src="/images/logo.png"
+                  alt="8BitTopUp Logo"
                   fill
                   priority // Loads immediately for better LCP score
                   className="object-contain pixelated" // Keeps edges sharp
