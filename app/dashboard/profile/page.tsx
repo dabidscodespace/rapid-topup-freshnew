@@ -6,7 +6,9 @@ import { User, Phone, Save, Loader2, Lock, Camera, Upload } from "lucide-react";
 
 export default function ProfilePage() {
   const { user, updateUser, refreshUser } = useAuth();
-  const fileInputRef = useRef(null);
+
+  // 🌟 FIX 1: Explicitly type the ref as HTMLInputElement
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -16,19 +18,29 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const [avatarPreview, setAvatarPreview] = useState("");
-  const [avatarFile, setAvatarFile] = useState(null);
+  // 🌟 FIX 2: Explicitly type avatarPreview as string
+  const [avatarPreview, setAvatarPreview] = useState<string>("");
+
+  //  FIX 3: Explicitly type avatarFile as File | null (This fixes your main error!)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
 
-  const [profileMessage, setProfileMessage] = useState({ type: "", text: "" });
-  const [passwordMessage, setPasswordMessage] = useState({
-    type: "",
-    text: "",
-  });
-  const [avatarMessage, setAvatarMessage] = useState({ type: "", text: "" });
+  // 🌟 FIX 4: Explicitly type message objects to prevent implicit 'any' errors
+  const [profileMessage, setProfileMessage] = useState<{
+    type: string;
+    text: string;
+  }>({ type: "", text: "" });
+  const [passwordMessage, setPasswordMessage] = useState<{
+    type: string;
+    text: string;
+  }>({ type: "", text: "" });
+  const [avatarMessage, setAvatarMessage] = useState<{
+    type: string;
+    text: string;
+  }>({ type: "", text: "" });
 
   useEffect(() => {
     if (user) {
@@ -61,7 +73,6 @@ export default function ProfilePage() {
         },
       );
       const data = await res.json();
-      console.log("Profile response:", data);
 
       if (data.success) {
         setProfileMessage({
@@ -79,7 +90,6 @@ export default function ProfilePage() {
         });
       }
     } catch (err) {
-      console.error("Profile error:", err);
       setProfileMessage({ type: "error", text: "Network error." });
     } finally {
       setProfileLoading(false);
@@ -144,7 +154,8 @@ export default function ProfilePage() {
     if (file) {
       setAvatarFile(file);
       const reader = new FileReader();
-      reader.onloadend = () => setAvatarPreview(reader.result);
+      // 🌟 FIX 5: Cast reader.result as string to satisfy TypeScript
+      reader.onloadend = () => setAvatarPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
