@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, ReactNode } from "react"; // 🌟 1. Added ReactNode import
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
@@ -13,7 +13,8 @@ import {
   Loader2,
 } from "lucide-react";
 
-export default function DashboardLayout({ children }) {
+// 🌟 2. Added explicit type for children here
+export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
