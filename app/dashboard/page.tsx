@@ -5,10 +5,14 @@ import { ShoppingCart, Wallet, TrendingUp } from "lucide-react";
 import { useEffect } from "react";
 
 export default function DashboardPage() {
-  const { user, refreshUser } = useAuth(); // 🌟 Get refreshUser
+  const { user, refreshUser } = useAuth();
+
+  // 🌟 FIX: Tell TypeScript that if user is null, we stop rendering here.
+  // This guarantees that for the rest of the component, 'user' is 100% defined.
+  if (!user) return null;
 
   useEffect(() => {
-    if (user?.token) {
+    if (user.token) {
       refreshUser();
     }
   }, []);
