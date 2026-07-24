@@ -12,6 +12,30 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
+interface ValidateResetKeyResponse {
+  success: boolean;
+  message?: string;
+}
+
+interface ResetPasswordRequest {
+  key: string | null;
+  email: string | null;
+  new_password: string;
+}
+
+interface UserData {
+  token: string;
+  [key: string]: unknown;
+}
+
+interface ResetPasswordResponse {
+  success: boolean;
+  message?: string;
+  data?: UserData;
+}
+
+type StatusType = "loading" | "valid" | "invalid" | "success";
+
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -59,7 +83,9 @@ function ResetPasswordContent() {
     validateKey();
   }, [key, email]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>,
+  ): Promise<void> => {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -85,7 +111,7 @@ function ResetPasswordContent() {
           body: JSON.stringify({ key, email, new_password: newPassword }),
         },
       );
-      const data = await res.json();
+      const data: ResetPasswordResponse = await res.json();
 
       if (data.success) {
         setStatus("success");
