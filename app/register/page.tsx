@@ -1,10 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { Loader2, Eye, EyeOff, Phone, AlertCircle } from "lucide-react";
+
+interface ErrorState {
+  type: string;
+  message: string;
+}
+
+interface RegistrationResult {
+  success: boolean;
+  message?: string;
+}
 
 export default function RegisterPage() {
   const [username, setUsername] = useState("");
@@ -18,7 +28,7 @@ export default function RegisterPage() {
   const { register } = useAuth();
   const router = useRouter();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError({ type: "", message: "" });
