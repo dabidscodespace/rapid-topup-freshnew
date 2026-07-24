@@ -39,7 +39,7 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  const handleProfileSave = async (e) => {
+  const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setProfileLoading(true);
     setProfileMessage({ type: "", text: "" });
