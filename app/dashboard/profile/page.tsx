@@ -86,7 +86,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handlePasswordChange = async (e) => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordLoading(true);
     setPasswordMessage({ type: "", text: "" });
