@@ -53,6 +53,17 @@ const slides = [
     accent: "#ff00de",
     slug: "free-fire-diamonds", // Slightly adjusted slug for uniqueness
   },
+  {
+    id: 5,
+    badge: " PLAYER 1 READY",
+    title: "PUBG MOBILE UC",
+    subtitle: "INSTANT UC DELIVERY. SECURE PAYMENTS. BEST RATES IN BD.",
+    price: "FROM ৳80",
+    image:
+      "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1600&q=80",
+    accent: "#00f0ff",
+    slug: "pubg-mobile",
+  },
 ];
 
 export default function HeroSlider() {
