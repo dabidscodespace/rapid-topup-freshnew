@@ -3,12 +3,12 @@
 import Link from "next/link";
 import {
   X,
-  Home,
-  Gamepad2,
   User,
   ShoppingBag,
   Wallet,
   LogOut,
+  Home,
+  Gamepad2,
 } from "lucide-react";
 
 interface MobileMenuProps {
@@ -31,16 +31,17 @@ export default function MobileMenu({
 }: MobileMenuProps) {
   if (!isOpen) return null;
 
+  // 🌟 AUTHENTICATED LINKS (Matches UserDropdown exactly)
   const authLinks = [
-    { name: "DASHBOARD", href: "/dashboard", icon: Home },
-    { name: "ORDER HISTORY", href: "/dashboard/orders", icon: ShoppingBag },
+    { name: "DASHBOARD", href: "/dashboard", icon: User },
+    { name: "HISTORY", href: "/dashboard/orders", icon: ShoppingBag },
     { name: "WALLET", href: "/dashboard/wallet", icon: Wallet },
   ];
 
+  // 🌟 STREAMLINED GUEST LINKS (No useless fluff, just core navigation)
   const guestLinks = [
     { name: "HOME", href: "/", icon: Home },
     { name: "ALL GAMES", href: "/#all-games", icon: Gamepad2 },
-    { name: "TRACK ORDER", href: "/track", icon: User },
   ];
 
   return (
@@ -67,6 +68,7 @@ export default function MobileMenu({
 
         <div className="relative z-20 flex-1 overflow-y-auto">
           {user ? (
+            // 🌟 AUTHENTICATED VIEW
             <div className="p-5 space-y-6">
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
@@ -134,6 +136,7 @@ export default function MobileMenu({
               </div>
             </div>
           ) : (
+            // 🌟 STREAMLINED GUEST VIEW
             <div className="p-5 space-y-6">
               <div className="space-y-3">
                 {guestLinks.map((link) => (
