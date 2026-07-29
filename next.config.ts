@@ -13,6 +13,11 @@ const nextConfig: NextConfig = {
         hostname: "placehold.co",
         pathname: "/**", // Allows the fallback placeholder image
       },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        pathname: "/**", // Allows all Unsplash images
+      },
     ],
   },
 };

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import GameCard from "./GameCard";
 
 interface Variation {
@@ -16,9 +17,9 @@ interface Product {
   image_url: string;
   min_price: number;
   max_price: number;
-  variations?: Variation[]; // ✅ Added variations array
-  stock_status?: string; // ✅ Fallback for simple products
-  is_in_stock?: boolean; // ✅ Fallback for simple products
+  variations?: Variation[];
+  stock_status?: string;
+  is_in_stock?: boolean;
 }
 
 interface ProductSectionProps {
@@ -59,6 +60,8 @@ export default function ProductSection({
   products,
   loading = false,
 }: ProductSectionProps) {
+  const [showAll, setShowAll] = useState(false);
+
   if (loading) {
     return (
       <section className="relative py-16 scroll-mt-28">
@@ -70,7 +73,7 @@ export default function ProductSection({
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8 auto-rows-fr">
-            {[...Array(5)].map((_, i) => (
+            {[...Array(10)].map((_, i) => (
               <SkeletonCard key={i} />
             ))}
           </div>
@@ -80,6 +83,10 @@ export default function ProductSection({
   }
 
   if (products.length === 0) return null;
+
+  // 🌟 STRICT 2-ROW LIMIT: 5 columns (xl) x 2 rows = 10 products max initially
+  const displayedProducts = showAll ? products : products.slice(0, 10);
+  const hasMore = products.length > 10;
 
   return (
     <section id={id} className="relative py-16 scroll-mt-28">
@@ -98,10 +105,7 @@ export default function ProductSection({
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8 auto-rows-fr">
-          {products.map((game) => {
-            // 🎯 THE FIX: Check if the product has variations.
-            // If it does, it's ONLY out of stock if EVERY variation is out of stock.
-            // If it doesn't have variations, fall back to checking the root level.
+          {displayedProducts.map((game) => {
             const isOutOfStock =
               game.variations && game.variations.length > 0
                 ? game.variations.every((v) => v.is_in_stock === false)
@@ -117,11 +121,23 @@ export default function ProductSection({
                 image_url={game.image_url}
                 min_price={game.min_price}
                 max_price={game.max_price}
-                is_out_of_stock={isOutOfStock} // ✅ Now passes the correct boolean
+                is_out_of_stock={isOutOfStock}
               />
             );
           })}
         </div>
+
+        {/* 🌟 VIEW MORE BUTTON (Only appears if there are more than 10 products) */}
+        {hasMore && !showAll && (
+          <div className="mt-12 flex justify-center">
+            <button
+              onClick={() => setShowAll(true)}
+              className="group relative flex items-center gap-3 border-4 border-[#00f0ff] bg-[#1a0b2e] px-8 py-4 font-pixel text-sm text-[#00f0ff] shadow-[4px_4px_0px_0px_#00f0ff] transition-all hover:bg-[#00f0ff] hover:text-black hover:shadow-[2px_2px_0px_0px_#00f0ff] btn-press"
+            >
+              <span>VIEW MORE</span>
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

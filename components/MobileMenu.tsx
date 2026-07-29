@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import {
   X,
@@ -29,7 +30,17 @@ export default function MobileMenu({
   user,
   onLogout,
 }: MobileMenuProps) {
-  if (!isOpen) return null;
+  // 🌟 Simple, glitch-free body scroll lock
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
 
   // 🌟 AUTHENTICATED LINKS (Matches UserDropdown exactly)
   const authLinks = [
@@ -38,20 +49,33 @@ export default function MobileMenu({
     { name: "WALLET", href: "/dashboard/wallet", icon: Wallet },
   ];
 
-  // 🌟 STREAMLINED GUEST LINKS (No useless fluff, just core navigation)
+  // 🌟 STREAMLINED GUEST LINKS
   const guestLinks = [
     { name: "HOME", href: "/", icon: Home },
     { name: "ALL GAMES", href: "/#all-games", icon: Gamepad2 },
   ];
 
   return (
-    <div className="fixed inset-0 z-40 md:hidden">
+    <div
+      // 🌟 CSS handles the fade. pointer-events-none ensures it doesn't block clicks when hidden.
+      className={`fixed inset-0 z-40 md:hidden transition-opacity duration-300 ${
+        isOpen
+          ? "opacity-100 pointer-events-auto"
+          : "opacity-0 pointer-events-none"
+      }`}
+    >
+      {/* 🌟 Backdrop */}
       <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      <div className="absolute right-0 top-0 h-full w-[85%] max-w-sm border-l-4 border-[#00f0ff] bg-[#0a0118] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      {/* 🌟 Menu Panel: CSS handles the slide-in/out smoothly, no matter how fast you click */}
+      <div
+        className={`absolute right-0 top-0 h-full w-[85%] max-w-sm border-l-4 border-[#00f0ff] bg-[#0a0118] shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
         <div className="absolute inset-0 crt-overlay opacity-20 pointer-events-none z-10" />
 
         <div className="relative z-20 flex items-center justify-between p-5 border-b-4 border-[#ff00de] bg-[#1a0b2e]">
