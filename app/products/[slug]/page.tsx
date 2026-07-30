@@ -148,7 +148,7 @@ export default function ProductPage() {
 
   return (
     <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-8xl">
         {/* Breadcrumb */}
         <div className="mb-6 sm:mb-8 flex items-center gap-2 font-pixel text-[10px] text-[#00f0ff]">
           <Link href="/" className="hover:text-[#fcee0a] transition-colors">
@@ -240,6 +240,7 @@ export default function ProductPage() {
                       : Number(product.id)
                   }
                   productName={product.name}
+                  productImage={product.image_url || product.banner_url} // 🌟 ADD THIS LINE
                   variations={product.variations ?? []}
                   fields={fields}
                 />
@@ -343,6 +344,7 @@ export default function ProductPage() {
                     : Number(product.id)
                 }
                 productName={product.name}
+                productImage={product.image_url || product.banner_url} // 🌟 ADD THIS LINE
                 variations={product.variations ?? []}
                 fields={fields}
               />

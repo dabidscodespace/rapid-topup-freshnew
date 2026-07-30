@@ -4,16 +4,18 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { Wallet, Check } from "lucide-react";
-import Link from "next/link"; // 🌟 Added Link import
+import Link from "next/link";
 
 export default function CheckoutForm({
   productId,
   productName,
+  productImage,
   variations,
   fields = [],
 }: {
   productId: number;
   productName: string;
+  productImage?: string;
   variations: any[];
   fields?: any[];
 }) {
@@ -44,7 +46,6 @@ export default function CheckoutForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    //  SAFETY CHECK: Prevent submission if not logged in
     if (!user) {
       return setResult({
         success: false,
@@ -54,7 +55,6 @@ export default function CheckoutForm({
 
     const safeFields = fields || [];
 
-    // 1. Validate required fields
     for (const field of safeFields) {
       if (field.required && !fieldValues[field.id]) {
         return setResult({
@@ -64,7 +64,6 @@ export default function CheckoutForm({
       }
     }
 
-    // 2. Validate variation selection AND stock status
     if (!selectedVariation) {
       return setResult({ success: false, message: "Please select a package." });
     }
@@ -76,7 +75,6 @@ export default function CheckoutForm({
       });
     }
 
-    // 3. Validate payment method
     if (
       remainingToPay > 0 &&
       !["bkash", "nagad", "rocket", "upay"].includes(paymentMethod)
@@ -216,6 +214,29 @@ export default function CheckoutForm({
     }
   };
 
+  if (!user) {
+    return (
+      <div className="border-4 border-[#00f0ff] bg-[#1a0b2e] p-8 text-center relative overflow-hidden">
+        <div className="absolute inset-0 crt-overlay opacity-10 pointer-events-none" />
+        <div className="relative z-10">
+          <h3 className="font-pixel text-lg text-[#fcee0a] mb-4 uppercase tracking-wider">
+            Login Required
+          </h3>
+          <p className="font-sans text-sm text-gray-300 mb-6 max-w-md mx-auto">
+            Please log in to your account to purchase this item, save your game
+            details, and use your wallet balance.
+          </p>
+          <Link
+            href="/login"
+            className="inline-block border-4 border-[#fcee0a] bg-[#ff00de] px-8 py-3 font-sans font-bold text-white shadow-[4px_4px_0px_0px_#fcee0a] btn-press hover:bg-[#fcee0a] hover:text-black hover:border-black hover:shadow-[2px_2px_0px_0px_#fcee0a] transition-all uppercase"
+          >
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* LOADING MODAL */}
@@ -256,10 +277,10 @@ export default function CheckoutForm({
 
       {/* ACTUAL FORM */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* PANEL 1: Account Details (Visible to everyone) */}
+        {/* PANEL 1: Account Details */}
         {fields && fields.length > 0 && (
           <div
-            className="border-4 bg-[#1a0b2e] p-5 relative"
+            className="border-4 bg-[#1a0b2e] p-4 sm:p-5 relative"
             style={{
               borderColor: "#00f0ff",
               boxShadow: "6px 6px 0px 0px #00f0ff",
@@ -267,7 +288,7 @@ export default function CheckoutForm({
           >
             <div className="absolute inset-0 crt-overlay opacity-10 pointer-events-none" />
             <div className="relative z-10">
-              <h3 className="font-pixel text-xs text-[#fcee0a] mb-4 uppercase tracking-wider flex items-center gap-2">
+              <h3 className="font-pixel text-xs sm:text-sm text-[#fcee0a] mb-3 sm:mb-4 uppercase tracking-wider flex items-center gap-2">
                 <span className="inline-flex items-center justify-center w-6 h-6 border-2 border-[#fcee0a] text-[#fcee0a] text-[10px]">
                   1
                 </span>
@@ -298,9 +319,9 @@ export default function CheckoutForm({
           </div>
         )}
 
-        {/* PANEL 2: Select Package (Visible to everyone) */}
+        {/* 🌟 PANEL 2: Select Package (OPTIMIZED 2-COL MOBILE / 3-COL MAX) */}
         <div
-          className="border-4 bg-[#1a0b2e] p-5 relative"
+          className="border-4 bg-[#1a0b2e] p-4 sm:p-5 relative"
           style={{
             borderColor: "#ff00de",
             boxShadow: "6px 6px 0px 0px #ff00de",
@@ -308,63 +329,108 @@ export default function CheckoutForm({
         >
           <div className="absolute inset-0 crt-overlay opacity-10 pointer-events-none" />
           <div className="relative z-10">
-            <h3 className="font-pixel text-xs text-[#fcee0a] mb-4 uppercase tracking-wider flex items-center gap-2">
+            <h3 className="font-pixel text-xs sm:text-sm text-[#fcee0a] mb-3 sm:mb-4 uppercase tracking-wider flex items-center gap-2">
               <span className="inline-flex items-center justify-center w-6 h-6 border-2 border-[#fcee0a] text-[#fcee0a] text-[10px]">
                 2
               </span>
-              Choose a Package
+              Choose Package
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+
+            {/*  GRID: 2 cols mobile, 3 cols tablet/desktop (MAX 3) */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
               {variations.map((v: any) => {
                 const isSelected = selectedVariation?.id === v.id;
-                const name = Object.values(v.attributes).join(" - ");
+                const name =
+                  Object.values(v.attributes).join(" / ") ||
+                  v.name ||
+                  "Standard";
                 const stockQty = v.stock_quantity;
-                const isCriticalStock =
-                  v.is_in_stock && stockQty !== null && stockQty <= 3;
+                const isOutOfStock = !v.is_in_stock;
+
+                // Only show stock text if stock is actually defined (not null)
+                const hasStockManagement =
+                  stockQty !== null && stockQty !== undefined;
                 const isLowStock =
-                  v.is_in_stock &&
-                  stockQty !== null &&
-                  stockQty > 3 &&
-                  stockQty <= 10;
+                  hasStockManagement && v.is_in_stock && stockQty <= 5;
+
+                const variationImage =
+                  v.image_url ||
+                  productImage ||
+                  "https://placehold.co/400x300/1a0b2e/00f0ff?text=PKG";
 
                 return (
                   <button
                     key={v.id}
                     type="button"
-                    disabled={!v.is_in_stock}
-                    onClick={() => v.is_in_stock && setSelectedVariation(v)}
-                    className={`relative p-4 border-4 text-center transition-all btn-press font-sans overflow-hidden ${
-                      !v.is_in_stock
-                        ? "border-gray-700 bg-gray-900 text-gray-500 opacity-60 cursor-not-allowed"
+                    disabled={isOutOfStock}
+                    onClick={() => !isOutOfStock && setSelectedVariation(v)}
+                    className={`relative w-full flex flex-row items-center gap-2 p-2 border-2 bg-[#0a0118] transition-all duration-200 group text-left overflow-hidden ${
+                      isOutOfStock
+                        ? "border-gray-800 opacity-50 cursor-not-allowed grayscale"
                         : isSelected
-                          ? "border-[#fcee0a] bg-[#0a0118] text-[#fcee0a] shadow-[4px_4px_0px_0px_#fcee0a]"
-                          : "border-[#00f0ff] bg-[#0a0118] text-white hover:border-[#fcee0a] hover:text-[#fcee0a]"
+                          ? "border-[#fcee0a] bg-[#fcee0a]/5 shadow-[0_0_12px_rgba(252,238,10,0.15)]"
+                          : "border-[#00f0ff]/30 hover:border-[#00f0ff] hover:bg-[#00f0ff]/5"
                     }`}
                   >
-                    {isCriticalStock && (
-                      <div className="absolute top-0 right-0 bg-[#ff0000] text-white font-pixel text-[8px] px-2 py-1 border-l-2 border-b-2 border-white animate-pulse z-10">
-                        ONLY {stockQty} LEFT!
+                    {/* 🌟 LEFT SIDE: Name & Price */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-between h-full py-0.5">
+                      {/* Package Name - Optimized for wrapping */}
+                      <h4
+                        className={`font-pixel text-[10px] leading-tight mb-1.5 line-clamp-2 break-words ${
+                          isOutOfStock ? "text-gray-500" : "text-white"
+                        }`}
+                      >
+                        {name.toUpperCase()}
+                      </h4>
+
+                      {/* Bottom Footer: Price & Status */}
+                      <div className="pt-1.5 border-t border-[#00f0ff]/20 flex items-center justify-between mt-auto">
+                        <span
+                          className={`font-pixel text-[11px] ${isOutOfStock ? "text-gray-600 line-through" : "text-[#fcee0a]"}`}
+                        >
+                          ৳{Number(v.price).toFixed(0)}
+                        </span>
+
+                        {/* 🌟 STOCK LOGIC: Only show badge if stock is managed OR if out of stock */}
+                        <div className="flex-shrink-0">
+                          {isOutOfStock ? (
+                            <span className="font-sans text-[9px] font-bold text-[#ff0000] uppercase leading-none">
+                              Out
+                            </span>
+                          ) : hasStockManagement ? (
+                            isLowStock ? (
+                              <span className="font-sans text-[9px] font-bold text-[#ff00de] uppercase leading-none">
+                                {stockQty} Left
+                              </span>
+                            ) : (
+                              <span className="font-sans text-[9px] font-bold text-[#00f0ff] uppercase leading-none">
+                                In Stock
+                              </span>
+                            )
+                          ) : (
+                            /* If stock is NOT managed (null), show nothing to keep it clean */
+                            <span className="block w-2 h-2 rounded-full bg-[#00f0ff]"></span>
+                          )}
+                        </div>
                       </div>
-                    )}
-                    {isLowStock && (
-                      <div className="absolute top-0 right-0 bg-[#fcee0a] text-black font-pixel text-[8px] px-2 py-1 border-l-2 border-b-2 border-white z-10">
-                        {stockQty} IN STOCK
-                      </div>
-                    )}
-                    {!v.is_in_stock && (
-                      <div className="absolute top-0 right-0 bg-[#ff0000] text-white font-pixel text-[8px] px-2 py-1 border-l-2 border-b-2 border-white z-10">
-                        SOLD OUT
-                      </div>
-                    )}
-                    <div
-                      className={`font-bold text-sm mb-1 uppercase leading-tight mt-2 ${!v.is_in_stock ? "line-through decoration-2 decoration-[#ff0000]" : ""}`}
-                    >
-                      {name}
                     </div>
-                    <div
-                      className={`font-pixel text-xs ${!v.is_in_stock ? "text-gray-600" : ""}`}
-                    >
-                      ৳{v.price}
+
+                    {/* 🌟 RIGHT SIDE: Image (Smaller on mobile for text space) */}
+                    <div className="relative w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 overflow-hidden flex items-center justify-center border border-[#00f0ff]/10">
+                      <img
+                        src={variationImage}
+                        alt={name}
+                        className="h-full w-full object-cover"
+                        style={{ imageRendering: "pixelated" }}
+                      />
+                      <div className="absolute inset-0 crt-overlay opacity-20 pointer-events-none" />
+
+                      {/* Selection Overlay Checkmark */}
+                      {isSelected && !isOutOfStock && (
+                        <div className="absolute inset-0 bg-[#fcee0a]/20 flex items-center justify-center backdrop-blur-[1px]">
+                          <Check className="h-4 w-4 sm:h-5 sm:w-5 text-[#fcee0a] drop-shadow-md" />
+                        </div>
+                      )}
                     </div>
                   </button>
                 );
@@ -373,9 +439,9 @@ export default function CheckoutForm({
           </div>
         </div>
 
-        {/* PANEL 3: Payment Method (LOCKED FOR GUESTS) */}
+        {/* PANEL 3: Payment Method */}
         <div
-          className="border-4 bg-[#1a0b2e] p-5 relative"
+          className="border-4 bg-[#1a0b2e] p-4 sm:p-5 relative"
           style={{
             borderColor: "#fcee0a",
             boxShadow: "6px 6px 0px 0px #fcee0a",
@@ -383,14 +449,13 @@ export default function CheckoutForm({
         >
           <div className="absolute inset-0 crt-overlay opacity-10 pointer-events-none" />
           <div className="relative z-10">
-            <h3 className="font-pixel text-xs text-[#fcee0a] mb-4 uppercase tracking-wider flex items-center gap-2">
+            <h3 className="font-pixel text-xs sm:text-sm text-[#fcee0a] mb-3 sm:mb-4 uppercase tracking-wider flex items-center gap-2">
               <span className="inline-flex items-center justify-center w-6 h-6 border-2 border-[#fcee0a] text-[#fcee0a] text-[10px]">
                 3
               </span>
               Payment Method
             </h3>
 
-            {/* 🌟 LOGIN GATE FOR PAYMENT SECTION */}
             {!user ? (
               <div className="border-2 border-dashed border-[#ff00de] bg-[#0a0118] p-8 text-center">
                 <h4 className="font-pixel text-sm text-[#ff00de] mb-2 uppercase">
@@ -408,7 +473,6 @@ export default function CheckoutForm({
                 </Link>
               </div>
             ) : (
-              // 🌟 ACTUAL PAYMENT OPTIONS (Only visible if logged in)
               <div className="space-y-5">
                 {userBalance > 0 &&
                   selectedVariation &&
