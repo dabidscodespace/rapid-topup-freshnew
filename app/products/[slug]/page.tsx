@@ -240,7 +240,8 @@ export default function ProductPage() {
                       : Number(product.id)
                   }
                   productName={product.name}
-                  productImage={product.image_url || product.banner_url} // 🌟 ADD THIS LINE
+                  // Ensure value is string | undefined (avoid null)
+                  productImage={(product.image_url ?? product.banner_url) as string | undefined}
                   variations={product.variations ?? []}
                   fields={fields}
                 />
@@ -344,7 +345,9 @@ export default function ProductPage() {
                     : Number(product.id)
                 }
                 productName={product.name}
-                productImage={product.image_url || product.banner_url} // 🌟 ADD THIS LINE
+                productImage={
+                  product.image_url ?? product.banner_url ?? undefined
+                }
                 variations={product.variations ?? []}
                 fields={fields}
               />
