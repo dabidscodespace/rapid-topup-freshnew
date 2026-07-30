@@ -241,7 +241,11 @@ export default function ProductPage() {
                   }
                   productName={product.name}
                   // Ensure value is string | undefined (avoid null)
-                  productImage={(product.image_url ?? product.banner_url) as string | undefined}
+                  productImage={
+                    (product.image_url ?? product.banner_url) as
+                      | string
+                      | undefined
+                  }
                   variations={product.variations ?? []}
                   fields={fields}
                 />
